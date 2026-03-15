@@ -31,8 +31,8 @@ if (!VAULT_PATH) {
 
 const vault = new VaultIndex(VAULT_PATH);
 const server = new McpServer({
-  name: "obsidian-forge-mcp",
-  version: "0.2.0",
+  name: "obsidian-forge",
+  version: "0.3.0",
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -725,20 +725,20 @@ registerVaultSuggest(server, VAULT_PATH!, vault);
 // ── Boot ─────────────────────────────────────────────────────────────
 
 async function main() {
-  console.error(`[obsidian-forge-mcp] Starting...`);
-  console.error(`[obsidian-forge-mcp] Vault: ${VAULT_PATH}`);
+  console.error(`[obsidian-forge] Starting...`);
+  console.error(`[obsidian-forge] Vault: ${VAULT_PATH}`);
 
   // Init index in background, server starts immediately
   vault.init().catch((err) => {
-    console.error("[obsidian-forge-mcp] Index init failed:", err);
+    console.error("[obsidian-forge] Index init failed:", err);
   });
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`[obsidian-forge-mcp] Connected via stdio`);
+  console.error(`[obsidian-forge] Connected via stdio`);
 }
 
 main().catch((err) => {
-  console.error("[obsidian-forge-mcp] Fatal:", err);
+  console.error("[obsidian-forge] Fatal:", err);
   process.exit(1);
 });
