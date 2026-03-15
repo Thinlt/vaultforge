@@ -274,7 +274,15 @@ npm install -g @blacksmithers/obsidian-forge-mcp
 
 ### Configure
 
-**Claude Desktop** — add to `claude_desktop_config.json`:
+**Claude Desktop** — edit `claude_desktop_config.json`:
+
+| OS | Config file location |
+|----|---------------------|
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Linux | `~/.config/Claude/claude_desktop_config.json` |
+
+> **Tip (Windows):** press `Win+R`, paste `%APPDATA%\Claude`, hit Enter. The folder opens directly.
 
 macOS / Linux:
 ```json
