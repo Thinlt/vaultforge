@@ -11,7 +11,9 @@ interface ParsedFrontmatter {
 }
 
 export function parseFrontmatter(content: string): ParsedFrontmatter {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  // Normalize CRLF → LF for cross-platform compatibility
+  const normalized = content.replace(/\r\n/g, "\n");
+  const match = normalized.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) return { frontmatter: {}, body: content, hasFrontmatter: false };
 
   const fm: Record<string, any> = {};
