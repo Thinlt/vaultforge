@@ -161,6 +161,10 @@ export class VaultIndex {
         mtime = dirStat.mtimeMs;
       }
 
+      // Dirs whose direct children are all subdirs (no files) still have ctime/mtime 0
+      if (!ctime) ctime = dirStat.birthtimeMs;
+      if (!mtime) mtime = dirStat.mtimeMs;
+
       resultMap.set(dirKey, {
         rel: dirKey,
         abs: absPath,
