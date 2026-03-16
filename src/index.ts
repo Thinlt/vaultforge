@@ -34,7 +34,7 @@ if (!VAULT_PATH) {
 const vault = new VaultIndex(VAULT_PATH);
 const server = new McpServer({
   name: "obsidian-forge",
-  version: "0.5.1",
+  version: "0.5.2",
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -313,7 +313,7 @@ server.tool(
     // Build directories listing
     let dirListing: Array<{ path: string; children_count: number; created: string; modified: string }> = [];
     if (include_dirs && !recursive) {
-      const dirs = vault.listDirEntries(dirPath);
+      const dirs = await vault.listDirEntries(dirPath);
       dirListing = dirs.map((d) => ({
         path: d.rel,
         children_count: d.children_count,

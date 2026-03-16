@@ -139,6 +139,47 @@ describe("handlePruneEmptyDirs", () => {
     expect(paths).not.toContain("Templates");
   });
 
+  it("prunes dirs containing only excluded subdirs", async () => {
+    await mkdir(path.join(vaultPath, "legacy/.obsidian"), { recursive: true });
+    await writeVaultFile(vaultPath, "legacy/.obsidian/app.json", '{"stale": true}');
+    vault.destroy();
+    vault = await createVaultIndex(vaultPath);
+
+    // Dry run should identify it as prunable
+    const dryResult = await handlePruneEmptyDirs(vault, vaultPath, {
+      path: ".",
+      dry_run: true,
+      exclude: [".obsidian", ".obsidian-forge", ".trash", ".git", "Templates"],
+    });
+    const dryData = parseResult(dryResult);
+    const dryPaths = dryData.directories.map((d: any) => d.path);
+    expect(dryPaths).toContain("legacy");
+    const legacyEntry = dryData.directories.find((d: any) => d.path === "legacy");
+    expect(legacyEntry.reason).toContain("excluded directories");
+
+    // Execute mode should delete it
+    const result = await handlePruneEmptyDirs(vault, vaultPath, {
+      path: ".",
+      dry_run: false,
+      exclude: [".obsidian", ".obsidian-forge", ".trash", ".git", "Templates"],
+    });
+    const data = parseResult(result);
+    expect(data.deleted).toBeGreaterThan(0);
+    expect(existsSync(path.join(vaultPath, "legacy"))).toBe(false);
+  });
+
+  it("never prunes vault root even if only excluded dirs", async () => {
+    // The vault root always has .obsidian/ — it must never appear in results
+    const result = await handlePruneEmptyDirs(vault, vaultPath, {
+      path: ".",
+      dry_run: true,
+      exclude: [".obsidian", ".obsidian-forge", ".trash", ".git", "Templates"],
+    });
+    const data = parseResult(result);
+    const paths = data.directories.map((d: any) => d.path);
+    expect(paths).not.toContain(".");
+  });
+
   it("scans from a specific subdirectory", async () => {
     await mkdir(path.join(vaultPath, "scoped/empty-sub"), { recursive: true });
     await writeVaultFile(vaultPath, "scoped/has-file.md", "# File");

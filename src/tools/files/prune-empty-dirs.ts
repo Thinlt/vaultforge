@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { readdir, rmdir, stat } from "node:fs/promises";
+import { readdir, rm, rmdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { VaultIndex } from "../../vault-index.js";
 interface ToolResult {
@@ -35,17 +35,20 @@ export async function handlePruneEmptyDirs(
 
     let hasFiles = false;
     let hasNonEmptySubdirs = false;
+    let excludedChildCount = 0;
 
     for (const entry of entries) {
-      if (entry.name.startsWith(".") && excludeSet.has(entry.name)) continue;
+      // Skip hidden files (but let hidden directories through to the excludeSet check)
+      if (entry.name.startsWith(".") && !entry.isDirectory()) continue;
+      if (entry.name.startsWith(".") && entry.isDirectory() && !excludeSet.has(entry.name)) continue;
 
       const childRel = relDir === "." ? entry.name : `${relDir}/${entry.name}`;
       const childAbs = path.join(absDir, entry.name);
 
       if (entry.isDirectory()) {
-        // Skip excluded directories
+        // Skip excluded directories — track them separately
         if (excludeSet.has(entry.name)) {
-          hasNonEmptySubdirs = true;
+          excludedChildCount++;
           continue;
         }
 
@@ -59,6 +62,10 @@ export async function handlePruneEmptyDirs(
     }
 
     if (!hasFiles && !hasNonEmptySubdirs && relDir !== ".") {
+      if (excludedChildCount > 0) {
+        emptyDirs.push({ path: relDir, reason: "Only contains excluded directories" });
+        return true;
+      }
       const reason = entries.length === 0
         ? "No files or subdirectories"
         : "Only contained empty subdirectories (pruned)";
@@ -79,7 +86,11 @@ export async function handlePruneEmptyDirs(
     for (const dir of emptyDirs) {
       const absDir = path.join(vaultPath, dir.path);
       try {
-        await rmdir(absDir);
+        if (dir.reason.includes("excluded directories")) {
+          await rm(absDir, { recursive: true, force: true });
+        } else {
+          await rmdir(absDir);
+        }
         vault.removeDir(dir.path);
         deleted++;
       } catch {

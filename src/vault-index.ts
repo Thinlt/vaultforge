@@ -105,10 +105,10 @@ export class VaultIndex {
   }
 
   /** List subdirectories of a directory (non-recursive) */
-  listDirEntries(relDir: string): DirEntry[] {
+  async listDirEntries(relDir: string): Promise<DirEntry[]> {
     const norm = this.normalizePath(relDir) || ".";
     const prefix = norm === "." ? "" : norm + "/";
-    const results: DirEntry[] = [];
+    const resultMap = new Map<string, DirEntry>();
 
     for (const dirKey of this.byDir.keys()) {
       // Direct child: starts with prefix and has no further slashes
@@ -121,6 +121,11 @@ export class VaultIndex {
       }
       if (dirKey === norm) continue; // skip self
 
+      // Verify directory actually exists on disk (skip ghosts)
+      const absPath = path.join(this.vaultPath, dirKey);
+      const dirStat = await stat(absPath).catch(() => null);
+      if (!dirStat) continue;
+
       const fileChildren = this.byDir.get(dirKey)?.size ?? 0;
       // Count sub-subdirectories
       const subDirPrefix = dirKey + "/";
@@ -131,9 +136,10 @@ export class VaultIndex {
         }
       }
 
-      const absPath = path.join(this.vaultPath, dirKey);
       let ctime = 0;
       let mtime = 0;
+      let childrenCount = fileChildren + subDirs;
+
       // Use the earliest ctime and latest mtime from direct file children
       const children = this.byDir.get(dirKey);
       if (children) {
@@ -146,16 +152,48 @@ export class VaultIndex {
         }
       }
 
-      results.push({
+      // For dirs with no indexed children, fall back to filesystem data
+      // (handles dirs that only contain excluded content like .obsidian/)
+      if (childrenCount === 0) {
+        const diskChildren = await readdir(absPath).catch(() => []);
+        childrenCount = diskChildren.length;
+        ctime = dirStat.birthtimeMs;
+        mtime = dirStat.mtimeMs;
+      }
+
+      resultMap.set(dirKey, {
         rel: dirKey,
         abs: absPath,
-        children_count: fileChildren + subDirs,
+        children_count: childrenCount,
         ctime,
         mtime,
       });
     }
 
-    return results;
+    // Supplement with filesystem scan for directories not in the index
+    const targetAbs = norm === "." ? this.vaultPath : path.join(this.vaultPath, norm);
+    const fsEntries = await readdir(targetAbs, { withFileTypes: true }).catch(() => []);
+    for (const entry of fsEntries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith(".")) continue; // skip dotfiles/dotdirs
+      const childRel = prefix ? prefix + entry.name : entry.name;
+      if (resultMap.has(childRel)) continue; // already from index
+
+      // This dir exists on disk but not in index — include it
+      const childAbs = path.join(targetAbs, entry.name);
+      const st = await stat(childAbs).catch(() => null);
+      if (!st) continue;
+      const diskChildren = await readdir(childAbs).catch(() => []);
+      resultMap.set(childRel, {
+        rel: childRel,
+        abs: childAbs,
+        children_count: diskChildren.length,
+        ctime: st.birthtimeMs,
+        mtime: st.mtimeMs,
+      });
+    }
+
+    return [...resultMap.values()];
   }
 
   /** Glob-like search: supports * and ** in patterns */

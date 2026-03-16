@@ -270,7 +270,7 @@ export async function handleListDir(
 
   let dirListing: Array<{ path: string; children_count: number; created: string; modified: string }> = [];
   if (include_dirs && !recursive) {
-    const dirs = vault.listDirEntries(dirPath);
+    const dirs = await vault.listDirEntries(dirPath);
     dirListing = dirs.map((d) => ({
       path: d.rel,
       children_count: d.children_count,
