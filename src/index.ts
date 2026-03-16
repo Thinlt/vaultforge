@@ -34,7 +34,7 @@ if (!VAULT_PATH) {
 const vault = new VaultIndex(VAULT_PATH);
 const server = new McpServer({
   name: "obsidian-forge",
-  version: "0.5.0",
+  version: "0.5.1",
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────
