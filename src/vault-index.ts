@@ -444,6 +444,9 @@ export class VaultIndex {
           setImmediate(() => this.handleChange(normalized));
         },
       );
+      watcher.on("error", () => {
+        // Silently ignore — watcher errors (ENOENT on deleted dirs) are expected
+      });
       this.watchers.push(watcher);
     } catch (err) {
       console.error("[vault-index] fs.watch failed, index will be static:", err);
